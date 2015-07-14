@@ -24,7 +24,7 @@ fn.data <- "moco-3-pattern-child.csv"
 fn.egi <- "egi.csv"
 
 # knitr options to save figures to dir.figs and create 12x6 figures at 300 DPI
-knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path=dir.figs)
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path=paste(dir.figs, "/", sep=""))
 ```
 
 Source libraries
@@ -58,7 +58,7 @@ df.egi <- read.csv(paste(dir.data, fn.egi, sep="/"))
 
 #### Figure 2 - EGI Channels
 
-```{r figure-2}
+```{r figure-egi-channel-locations}
 # Load topo ears & nose from file
 img <- readPNG(paste(dir.figs, "topoplot.png", sep="/"))
 
@@ -82,7 +82,6 @@ pl.egi <- ggplot( data=df.egi, aes(x=xpos, y=ypos, label=chan)) +
          legend.position = "none")  # blank background and no legend
 pl.egi
 ```
-
 
 ## Omnibus analysis
 
@@ -133,12 +132,16 @@ mass.univariate <- function( ch, df, harm, method ) {
 }
 ```
 
-### Mass univariate MANOVA on 1F1
 
-MANOVA on 1F1 with Pattern, Speed, and Pattern x Speed. Analyze and write write output to file.
+```{r}
+this.harm = "1F1"
+```
+
+### Mass univariate MANOVA on `r this.harm`
+
+MANOVA on `r this.harm` with Pattern, Speed, and Pattern x Speed. Analyze and write write output to file.
 
 ```{r 1F1-mass-univariate-manova}
-this.harm = "1F1"
 
 maov.list = lapply( unique( df.moco.sm$Channel ), mass.univariate, df=df.moco.sm, harm=this.harm, method="manova.ampl.complex")
 maov.summ = lapply( maov.list, summary )
@@ -193,16 +196,16 @@ df.pvals$Harm = rep( this.harm, 3*128 )
 
 #### Figure 3 -- `r paste(this.harm, " Effects by Channel", sep="")`
 
-```{r figure-3}
+```{r figure-1F1-effects-by-channel}
 # Delete scales from plots
 yquiet = scale_y_continuous("", breaks=NULL)
 xquiet = scale_x_continuous("", breaks=NULL)
-
-# Load topo ears & nose from text file
-img <- readPNG("topoplot.png")
-
-# Add a raster
-topo_ears_nose <- rasterGrob(img, interpolate=TRUE)
+# 
+# # Load topo ears & nose from text file
+# img <- readPNG("topoplot.png")
+# 
+# # Add a raster
+# topo_ears_nose <- rasterGrob(img, interpolate=TRUE)
 
 pl.title <- paste(this.harm, "Effects by Channel", sep=" ")
 
@@ -261,7 +264,7 @@ df.below.thresh.pattern <- df.below.thresh %>%
 
 Then plot.
 
-```{r figure-4}
+```{r figure-1F1-pattern-ampl}
 limits <- aes( ymax = rms.amp + rms.amp.sem, ymin = rms.amp )
 dodge <- position_dodge( width=0.8 )
 
@@ -293,7 +296,7 @@ pl.pattern
 
 #### `r paste( this.harm, " Channels Below p<.0005 for Speed", sep="")`
 
-```{r}
+```{r figure-1F1-speed-ampl}
 df.below.thresh.speed <- df.below.thresh %>%
     group_by( Channel, Speed, iSess ) %>%
     summarise( sr.sub.mean=mean(Sr), 
@@ -372,7 +375,7 @@ df.below.thresh.speed.summ <- df.below.thresh.speed.bysub %>%
 
 #### Figure 5 -- `r paste(this.harm, " Selected Channels below p<.0005 for Pattern", sep="")`
 
-```{r figure-5}
+```{r figure-1F1-pattern-selected}
 pl.theme.vect <- theme(plot.title = element_text(lineheight=.8, face ="bold", vjust=2, size = 20),
                   axis.title.x=element_text(vjust=-.6, size=18),
                   axis.title.y=element_text(face="bold",vjust=1, size=18),
@@ -402,7 +405,7 @@ df.below.thresh.pattern.summ %>% filter( Channel %in% c(106,107) ) %>%
 
 #### `r paste(this.harm, " All Channels Below p<.0005", sep="")
 
-```{r figure-s1}
+```{r figure-1F1-pattern-vector}
 pl.theme.vect.all <- theme(axis.title.x=element_text(vjust=-.6, size=18),
                   axis.title.y=element_text(face="bold",vjust=1, size=18),
                   axis.text=element_text(color="black", size=8),
@@ -428,9 +431,13 @@ df.below.thresh.pattern.summ %>%
   pl.theme.vect.all
 ```
 
-## Mass univariate MANOVA on `r this.harm="1F2"`
+```{r}
+this.harm="1F2"
+```
 
-MANOVA on `this.harm` with Pattern, Speed, and Pattern x Speed. Analyze and write write output to file.
+## Mass univariate MANOVA on `r this.harm`
+
+MANOVA on `r this.harm` with Pattern, Speed, and Pattern x Speed. Analyze and write write output to file.
 
 ```{r 1F2-mass-univariate-manova}
 this.harm = "1F2"
@@ -474,7 +481,7 @@ df.pvals$Harm = rep( this.harm, 3*128 )
 
 #### Figure 6 -- `r paste(this.harm, " Effects by Channel", sep="")`
 
-```{r figure-6}
+```{r figure-1F2-effects-by-channel}
 pl.title <- paste(this.harm, "Effects by Channel", sep=" ")
 
 # Plot
@@ -529,7 +536,7 @@ df.below.thresh.pattern <- df.below.thresh %>%
 
 #### `r paste( this.harm, " Channels Below p<.0005 for Pattern", sep="")`
 
-```{r 1F2-pattern-not-in-paper}
+```{r figure-1F2-pattern-ampl}
 limits <- aes( ymax = rms.amp + rms.amp.sem, ymin = rms.amp )
 dodge <- position_dodge( width=0.8 )
 
@@ -548,7 +555,7 @@ pl.pattern
 
 #### Figure 7 -- `r paste( this.harm, " Channels Below p<.0005 for Speed", sep="")`
 
-```{r figure-7}
+```{r figure-1F2-speed-ampl}
 df.below.thresh.speed <- df.below.thresh %>%
     group_by( Channel, Speed, iSess ) %>%
     summarise( sr.sub.mean=mean(Sr), 
@@ -584,7 +591,7 @@ pl.speed
 Do for Pattern then Speed. Ignore interaction because there are no effects.
 
 ##### Pattern
-```{r 1F2-select-chans-below-patt}
+```{r figure-1F2-select-chans-below-pattern}
 # Summarize by subject first
 df.below.thresh.pattern.bysub <- df.moco.sm %>%
   filter( Channel %in% chans.below.thresh, Harm == "1F1" ) %>%
@@ -630,7 +637,7 @@ df.below.thresh.speed.summ <- df.below.thresh.speed.bysub %>%
 
 Select channels 62 and 75.
 
-```{r figure-8}
+```{r figure-1F2-speed-selected}
 df.below.thresh.speed.summ %>% filter( Channel %in% c(62,75) ) %>%
   ggplot() +
   aes( x=sr.mean, y=si.mean, color=Speed ) +
@@ -649,7 +656,7 @@ df.below.thresh.speed.summ %>% filter( Channel %in% c(62,75) ) %>%
 
 #### `r paste(this.harm, " All Channels Below p<.0005 for Speed", sep="")`
 
-```{r}
+```{r figure-1F2-speed-vector}
 amp.max = 0.5
 df.below.thresh.speed.summ %>% 
   ggplot() +
@@ -665,13 +672,15 @@ df.below.thresh.speed.summ %>%
   pl.theme.vect.all
 ```
 
-## Mass univariate MANOVA on 2F1
+```{r}
+this.harm="2F1"
+```
 
-MANOVA on 2F1 with Pattern, Speed, and Pattern x Speed. Analyze and write write output to file.
+## Mass univariate MANOVA on `r this.harm`
+
+MANOVA on `r this.harm` with Pattern, Speed, and Pattern x Speed. Analyze and write write output to file.
 
 ```{r 2F1-mass-univariate-manova}
-this.harm = "2F1"
-
 maov.list = lapply( unique( df.moco.sm$Channel ), mass.univariate, df=df.moco.sm, harm=this.harm, method="manova.ampl.complex")
 maov.summ = lapply( maov.list, summary )
 ```
@@ -711,7 +720,7 @@ df.pvals$Harm = rep( this.harm, 3*128 )
 
 #### `r paste(this.harm, " Effects By Channel", sep="")`
 
-```{r 2F1-figure}
+```{r figure-2F1-effects-by-channel}
 pl.title <- paste(this.harm, "Effects by Channel", sep=" ")
 
 # Plot
@@ -727,15 +736,17 @@ pl <- ggplot(data=df.pvals, aes(x=xpos, y=ypos, color=Pvals.cuts, size=Pvals.cut
 pl + annotation_custom(topo_ears_nose, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf)
 ```
 
-Small cluster in right mid-frontal channels for Pattern by Speed interaction, but ps <.001 and p<.01. 
+Small cluster in right mid-frontal channels for Pattern by Speed interaction, but ps <.001 and p<.01. So, we ignore.
 
-## Mass univariate MANOVA on 3F1
+```{r}
+this.harm = "3F1"
+```
 
-MANOVA on 3F1 with Pattern, Speed, and Pattern x Speed. 
+## Mass univariate MANOVA on `r this.harm`
+
+MANOVA on `r this.harm` with Pattern, Speed, and Pattern x Speed. 
 
 ```{r 3F1-mass-univariate-manova}
-this.harm = "3F1"
-
 maov.list = lapply( unique( df.moco.sm$Channel ), mass.univariate, df=df.moco.sm, harm=this.harm, method="manova.ampl.complex")
 maov.summ = lapply( maov.list, summary )
 ```
@@ -775,7 +786,7 @@ df.pvals$Harm = rep( this.harm, 3*128 )
 
 #### `r paste(this.harm, " Effects By Channel", sep="")`
 
-```{r 3F1-figure}
+```{r figure-3F1-effects-by-channel}
 pl.title <- paste(this.harm, "Effects by Channel", sep=" ")
 
 # Plot
@@ -804,7 +815,7 @@ df.below.thresh <- df.moco.sm %>%
 
 #### `r paste( this.harm, " Channels Below p<.0005 for Speed", sep="")`
 
-```{r 3F1-speed-chans-below}
+```{r figure-3F1-speed-ampl}
 df.below.thresh.speed <- df.below.thresh %>%
     group_by( Channel, Speed, iSess ) %>%
     summarise( sr.sub.mean=mean(Sr), 
@@ -882,7 +893,7 @@ df.below.thresh.speed.summ <- df.below.thresh.speed.bysub %>%
 
 #### `r paste(this.harm, " All Channels Below p<.0005 for Speed", sep="")`
 
-```{r}
+```{r figure-3F1-speed-vector}
 amp.max = 0.5
 df.below.thresh.speed.summ %>% 
   ggplot() +
