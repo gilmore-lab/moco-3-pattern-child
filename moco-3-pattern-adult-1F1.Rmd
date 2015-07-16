@@ -212,7 +212,7 @@ chans.below.thresh <- chans.below.thresh$Chan
 df.below.thresh <- df.moco %>%
   filter( Channel %in% chans.below.thresh, Harm == this.harm )
 
-n.chans.below <- dim(df.below.thresh)[1]
+n.chans.below <- length( unique(chans.below.thresh) )
 ```
 
 There were `r n.chans.below` channels that met criterion for `r this.cond`.
@@ -283,7 +283,7 @@ chans.below.thresh <- chans.below.thresh$Chan
 df.below.thresh <- df.moco %>%
   filter( Channel %in% chans.below.thresh, Harm == this.harm )
 
-n.chans.below <- dim(df.below.thresh)[1]
+n.chans.below <- length( unique(chans.below.thresh) )
 ```
 
 There were `r n.chans.below` channels that met criterion for `r this.cond`.

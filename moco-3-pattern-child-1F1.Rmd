@@ -1,5 +1,5 @@
 ---
-title: "moco-3-pattern-adult-2F1.Rmd"
+title: "moco-3-pattern-child-1F1.Rmd"
 author: "rogilmore"
 date: "`r Sys.Date()`"
 output: html_document
@@ -12,9 +12,9 @@ This document demonstrates the analyses reported in Gilmore, Thomas, and Fesi (2
 ### Harmonic of interest and participant group, alpha level
 
 ```{r settings}
-this.harm <- "2F1"
+this.harm <- "1F1"
 p.thresh = 0.0005
-this.group <- 'adult'
+this.group <- 'child'
 
 dir.figs <- 'figs'
 fn.data <- paste("moco-3-pattern-", this.group, ".csv", sep="")
@@ -156,7 +156,7 @@ df.stats$Cond = ordered( df.stats$Cond, levels=c("Pattern", "Speed", "Patt*Spd")
 
 #### Figure -- `r paste(this.harm, " Effects by Channel", sep="")`
 
-```{r figure-1-2F1}
+```{r figure-1-1F1}
 # Delete scales from plots
 yquiet = scale_y_continuous("", breaks=NULL)
 xquiet = scale_x_continuous("", breaks=NULL)
@@ -223,7 +223,7 @@ Calculate mean values for each participant, by channel and pattern for the real 
 
 Then plot.
 
-```{r figure-2-2F1}
+```{r figure-2-1F1}
 if (n.chans.below) {
   df.below.thresh.pattern <- df.below.thresh %>%
     group_by( Channel, Pattern, iSess ) %>%
@@ -294,7 +294,7 @@ Calculate mean values for each participant, by channel and pattern for the real 
 
 Then plot.
 
-```{r figure-3-2F1}
+```{r figure-3-1F1}
 if (n.chans.below) {
   df.below.thresh.speed <- df.below.thresh %>%
     group_by( Channel, Speed, iSess ) %>%
