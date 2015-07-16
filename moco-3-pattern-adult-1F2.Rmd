@@ -1,0 +1,342 @@
+---
+title: "moco-3-pattern-adult-1F2.Rmd"
+author: "rogilmore"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+This document demonstrates the analyses reported in Gilmore, Thomas, and Fesi (2015).
+
+## Set-up
+
+### Harmonic of interest and participant group, alpha level
+
+```{r settings}
+this.harm <- "1F2"
+p.thresh = 0.0005
+this.group <- 'adult'
+
+dir.figs <- 'figs'
+fn.data <- paste("moco-3-pattern-", this.group, ".csv", sep="")
+fn.egi <- "egi.csv"
+```
+
+### Source libraries and load data.
+
+Source libraries
+
+```{r libraries, warning=FALSE, message=FALSE}
+# Libraries
+library(ggplot2)
+library(dplyr)
+library(png)
+library(gridExtra)
+library(tidyr)
+library(knitr)
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path=paste(dir.figs, "/", sep=""), dpi=300)
+```
+
+Load MOCO dataframe.
+
+```{r load-data}
+df.moco <- read.csv(fn.data)
+```
+
+### EGI channels
+
+Load EGI channel positions.
+
+```{r load-egi-channel-location-data}
+df.egi <- read.csv(fn.egi)
+
+# Load topo ears & nose from file
+img <- readPNG(paste(dir.figs, "topoplot.png", sep="/"))
+
+# Add a raster
+topo_ears_nose <- rasterGrob(img, interpolate=TRUE)
+```
+
+## `r this.harm` mass univariate analysis
+
+Create mass univariate function.
+
+```{r mass-univariate-function}
+mass.univariate <- function( ch, df, harm, method ) { 
+
+  #Select data frame
+  local.df = df[ df$Channel == ch & df$Harm == harm,]
+
+  #Select method and conduct analysis
+  if (method =="manova.ampl.complex"){
+    this.stats <- manova( formula = cbind(Sr, Si) ~ Pattern*Speed + Error(iSess), data=local.df )   } else {
+     this.stats = NA
+   }
+   return( this.stats )
+}
+```
+
+### Mass univariate MANOVA on `r this.harm`
+
+MANOVA on `r this.harm` with Pattern, Speed, and Pattern x Speed. Analyze and write write output to file.
+
+```{r mass-univariate-manova}
+maov.list = lapply( unique( df.moco$Channel ), mass.univariate, df=df.moco, harm=this.harm, method="manova.ampl.complex")
+maov.summ = lapply( maov.list, summary )
+```
+
+#### Extract channel-level statistics
+
+Extract statistics, $F$ and $p$ values, from MANOVA summary. Create data frame for plotting and tweak factor levels and labels for aesthetic reasons.
+
+```{r extract-statistics}
+#'Error: Within.stats17' denominator df for Pattern
+#'Error: Within.stats18' denominator df for Speed
+#'Error: Within.stats19' denominator df for Patt*Spd
+#'Error: Within.stats13' num df for Pattern
+#'Error: Within.stats14' num df for Speed
+#'Error: Within.stats15' num df for Patt*Spd
+#'Error: Within.stats9'  F for Pattern
+#'Error: Within.stats10' F for Speed
+#'Error: Within.stats11' F for Patt*Spd
+#'Error: Within.stats21' p for Pattern
+#'Error: Within.stats22' p for Speed
+#'Error: Within.stats23' p for Patt*Spd
+
+# Function to extract stats
+moco.stats <- function(model.list) {
+  ml = unlist(model.list)
+  new.vals <- as.numeric( c( ml['Error: Within.stats9'], 
+                             ml['Error: Within.stats10'], 
+                             ml['Error: Within.stats11'], 
+                             ml['Error: Within.stats13'], 
+                             ml['Error: Within.stats14'], 
+                             ml['Error: Within.stats15'],
+                             ml['Error: Within.stats17'], 
+                             ml['Error: Within.stats18'], 
+                             ml['Error: Within.stats19'], 
+                             ml['Error: Within.stats21'], 
+                             ml['Error: Within.stats22'], 
+                             ml['Error: Within.stats23']) )
+  names(new.vals) <- c("F-Pattern", "F-Speed", "F-Patt*Spd", "df-Pattern", "df-Speed", "df-Patt*Spd", "df-Pattern-denom", "df-Speed-denom", "df-Patt*Spd-denom", "p-Pattern", "p-Speed", "p-Patt*Spd")
+  return( rbind( new.vals ) )
+}
+
+# Extract stats and assemble into data frame
+list.stats <- data.frame( t( sapply(maov.summ, moco.stats) ) )
+names( list.stats ) <- rep( c("Pattern", "Speed", "Patt_Spd"), 4)
+list.F <- list.stats[,1:3]
+list.dfNum <- list.stats[,4:6]
+list.dfDen <- list.stats[,7:9]
+list.dfp <- list.stats[,10:12]
+F_val <- data.frame(list.F) %>% gather(Effect, F_val, Pattern:Patt_Spd)
+dfNum <- data.frame(list.dfNum) %>% gather(Effect, dfNum, Pattern:Patt_Spd)
+dfDen <- data.frame(list.dfDen) %>% gather(Effect, dfDen, Pattern:Patt_Spd)
+pvals <- data.frame(list.dfp) %>% gather(Pvals, pvals, Pattern:Patt_Spd)
+df.stats <- data.frame(Chan = rep( 1:128, 3), 
+                       Cond = rep(c("Pattern", "Speed", "Patt*Spd"), 
+                                  c(128, 128, 128)),
+                       Fvals = F_val[,2],
+                       FdfNum = dfNum[,2],
+                       FdfDen = dfDen[,2],
+                       Pvals = pvals[,2],
+                       xpos=rep(df.egi$xpos,3),
+                       ypos=rep(df.egi$ypos,3))
+
+# Cut pvals
+pvals.cuts = c(-.01,.0001, .0005, .001, .005, .01, .05, 1)
+pvals.lbls = c("<.0001","<.0005", "<.001", "<.005", "<.01", "<.05", "ns")
+
+# Create cuts based on p-value levels
+Pvals.cuts = cut( df.stats$Pvals, breaks=pvals.cuts, labels=pvals.lbls)
+Pvals.cuts = ordered( Pvals.cuts, levels = rev( pvals.lbls ) )
+df.stats$Pvals.cuts = Pvals.cuts
+
+df.stats$Cond = ordered( df.stats$Cond, levels=c("Pattern", "Speed", "Patt*Spd"))
+```
+
+#### Figure -- `r paste(this.harm, " Effects by Channel", sep="")`
+
+```{r figure-1-1F2}
+# Delete scales from plots
+yquiet = scale_y_continuous("", breaks=NULL)
+xquiet = scale_x_continuous("", breaks=NULL)
+
+# Plot theme for channel topo
+pl.theme.topo <- theme( plot.title = element_text(lineheight=.8, face ="bold", vjust=2, size=16),
+         legend.title=element_text(size=0),
+         legend.text=element_text(size=12, face="bold"),
+         legend.position="bottom"
+         )
+
+# Plot
+pl <- ggplot(data=df.stats, aes(x=xpos, y=ypos, color=Pvals.cuts, size=Pvals.cuts)) +
+  geom_point() +
+  facet_grid(facets = . ~ Cond) +
+  coord_fixed() + 
+  xquiet + 
+  yquiet + 
+  pl.theme.topo
+
+# Add ears, nose
+pl + annotation_custom(topo_ears_nose, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf)
+```
+
+#### Table of `r this.harm` Channel Statistics for Pattern
+
+```{r table-1}
+df.stats %>% 
+  filter( Cond == "Pattern", Pvals < p.thresh  ) %>% 
+  select( Chan, Fvals, FdfNum, FdfDen, Pvals ) %>% 
+  kable()
+```
+
+#### Table of `r this.harm` Channel Statistics for Speed
+
+```{r table-2}
+df.stats %>% 
+  filter( Cond == "Speed", Pvals < p.thresh  ) %>% 
+  select( Chan, Fvals, FdfNum, FdfDen, Pvals ) %>% 
+  kable()
+```
+
+#### Extract data for channels below threshold
+
+```{r}
+this.cond <- "Pattern"
+chans.below.thresh <- df.stats %>%
+  filter( Cond == this.cond, Pvals <= p.thresh ) %>%
+  select( Chan )
+
+chans.below.thresh <- chans.below.thresh$Chan
+
+df.below.thresh <- df.moco %>%
+  filter( Channel %in% chans.below.thresh, Harm == this.harm )
+
+n.chans.below <- dim(df.below.thresh)[1]
+```
+
+There were `r n.chans.below` channels that met criterion for `r this.cond`.
+
+#### Figure -- `r paste( this.harm, " Channels Below p<.0005 for ", this.cond, sep="")`
+
+Calculate mean values for each participant, by channel and pattern for the real (Sr) and imaginary (Si) components at the selected harmonic. Then, calculate the group means for Sr and Si and the group standard deviations and root-mean-square (RMS) amplitudes (and standard errors) from the group mean Sr and Si values.
+
+Then plot.
+
+```{r figure-2-1F2}
+if (n.chans.below) {
+  df.below.thresh.pattern <- df.below.thresh %>%
+    group_by( Channel, Pattern, iSess ) %>%
+    summarise( sr.sub.mean=mean(Sr), 
+               si.sub.mean=mean(Si),
+               rms.amp.sub=sqrt(sr.sub.mean^2+si.sub.mean^2)) %>%
+    group_by( Channel, Pattern ) %>%
+    summarise( sr.group.mean=mean( sr.sub.mean ),
+               si.group.mean=mean( si.sub.mean ),
+               sr.group.sd=sd(sr.sub.mean),
+               si.group.sd=sd(si.sub.mean),
+               rms.amp=sqrt( sr.group.mean^2 + si.group.mean^2),
+               rms.amp.sem = mean( rms.amp.sub )/sqrt(n()),
+               nsubs=n(),
+               sr.group.sem=mean(sr.sub.mean)/sqrt(n()),
+               si.group.sem=mean(si.sub.mean)/sqrt(n())
+    )
+  
+  limits <- aes( ymax = rms.amp + rms.amp.sem, ymin = rms.amp )
+  dodge <- position_dodge( width=0.8 )
+  
+  pl.theme.bar <- theme(plot.title = element_text(lineheight=.8, face ="bold", vjust=2, size = 20),
+                        panel.background = element_rect(fill=NA),
+                        panel.grid.major = element_blank(),
+                        panel.grid.minor = element_blank(),
+                        panel.border = element_rect(fill=NA,color="black", size=.8,
+                                                    linetype="solid"),
+                        axis.title.x=element_text(vjust=-.6, size=18),
+                        axis.title.y=element_text(face="bold",vjust=1, size=18),
+                        axis.text=element_text(color="black", size=8),
+                        legend.title=element_blank(),
+                        legend.text=element_text(size=16), 
+                        legend.position="bottom",
+                        legend.background=element_blank())
+  
+  pl.pattern <- ggplot( data=df.below.thresh.pattern ) +
+    aes( x=as.factor(Channel), y=rms.amp, fill=Pattern) + 
+    geom_bar( stat="identity", width=0.8, position=dodge ) +
+    geom_errorbar( limits, position=dodge, width=0.15 ) +
+    xlab("Channel") +
+    ylab(expression(paste("RMS amplitude (", mu, "V)", sep=""))) +
+    pl.theme.bar
+  pl.pattern
+}
+```
+
+#### Extract data for channels below threshold
+
+```{r}
+this.cond <- "Speed"
+chans.below.thresh <- df.stats %>%
+  filter( Cond == this.cond, Pvals <= p.thresh ) %>%
+  select( Chan )
+
+chans.below.thresh <- chans.below.thresh$Chan
+
+df.below.thresh <- df.moco %>%
+  filter( Channel %in% chans.below.thresh, Harm == this.harm )
+
+n.chans.below <- dim(df.below.thresh)[1]
+```
+
+There were `r n.chans.below` channels that met criterion for `r this.cond`.
+
+#### Figure -- `r paste( this.harm, " Channels Below p<.0005 for ", this.cond, sep="")`
+
+Calculate mean values for each participant, by channel and pattern for the real (Sr) and imaginary (Si) components at the selected harmonic. Then, calculate the group means for Sr and Si and the group standard deviations and root-mean-square (RMS) amplitudes (and standard errors) from the group mean Sr and Si values.
+
+Then plot.
+
+```{r figure-3-1F2}
+if (n.chans.below) {
+  df.below.thresh.speed <- df.below.thresh %>%
+    group_by( Channel, Speed, iSess ) %>%
+    summarise( sr.sub.mean=mean(Sr), 
+               si.sub.mean=mean(Si),
+               rms.amp.sub=sqrt(sr.sub.mean^2+si.sub.mean^2)) %>%
+    group_by( Channel, Speed ) %>%
+    summarise( sr.group.mean=mean( sr.sub.mean ),
+               si.group.mean=mean( si.sub.mean ),
+               sr.group.sd=sd(sr.sub.mean),
+               si.group.sd=sd(si.sub.mean),
+               rms.amp=sqrt( sr.group.mean^2 + si.group.mean^2),
+               rms.amp.sem = mean( rms.amp.sub )/sqrt(n()),
+               nsubs=n(),
+               sr.group.sem=mean(sr.sub.mean)/sqrt(n()),
+               si.group.sem=mean(si.sub.mean)/sqrt(n())
+    )
+  
+  limits <- aes( ymax = rms.amp + rms.amp.sem, ymin = rms.amp )
+  dodge <- position_dodge( width=0.8 )
+  
+  pl.theme.bar <- theme(plot.title = element_text(lineheight=.8, face ="bold", vjust=2, size = 20),
+                        panel.background = element_rect(fill=NA),
+                        panel.grid.major = element_blank(),
+                        panel.grid.minor = element_blank(),
+                        panel.border = element_rect(fill=NA,color="black", size=.8,
+                                                    linetype="solid"),
+                        axis.title.x=element_text(vjust=-.6, size=18),
+                        axis.title.y=element_text(face="bold",vjust=1, size=18),
+                        axis.text=element_text(color="black", size=8),
+                        legend.title=element_blank(),
+                        legend.text=element_text(size=16), 
+                        legend.position="bottom",
+                        legend.background=element_blank())
+  
+  pl.pattern <- ggplot( data=df.below.thresh.speed ) +
+    aes( x=as.factor(Channel), y=rms.amp, fill=Speed) + 
+    geom_bar( stat="identity", width=0.8, position=dodge ) +
+    geom_errorbar( limits, position=dodge, width=0.15 ) +
+    xlab("Channel") +
+    ylab(expression(paste("RMS amplitude (", mu, "V)", sep=""))) +
+    pl.theme.bar
+  pl.pattern
+}
+```
